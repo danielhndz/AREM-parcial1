@@ -3,6 +3,7 @@ package edu.escuelaing.arem;
 import java.net.*;
 import java.io.*;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 public class HttpServer {
@@ -106,35 +107,95 @@ public class HttpServer {
 
 	private static void consulta(PrintWriter out, String command) {
 		System.out.println("\n\n\tRecibiendo comando = " + command);
-		String header = "HTTP/1.1 200 OK\r\n"
-				+ "Content-Type: text/plain\r\n\r\n";
 		if (command.startsWith("class")) {
 			String className = command
 					.replace("class", "")
 					.replace("(", "")
 					.replace(")", "");
-			out.println(header + classCommand(className));
+			out.println(classCommand(className));
+		} else if (command.startsWith("invoke")) {
+			String[] args = command
+					.replace("invoke", "")
+					.replace("(", "")
+					.replace(")", "")
+					.split(",");
+			out.println(invokeCommand(args[0], args[1]));
+		} else {
+			out.println("echo :: " + command);
 		}
 	}
 
 	private static String classCommand(String className) {
-		StringBuilder response = new StringBuilder();
+		StringBuilder builder = new StringBuilder();
+		builder.append("HTTP/1.1 200 OK\r\n");
+		builder.append("Content-Type: text/html\r\n\r\n");
+		builder.append("<!DOCTYPE html>");
+		builder.append("<html>");
+		builder.append("<head>");
+		builder.append("<meta charset='UTF-8'>");
+		builder.append("<title>AREM</title>\n");
+		builder.append("</head>");
+		builder.append("<body>");
 		Class<?> targetClass;
 		try {
 			targetClass = Class.forName(className);
 		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
-			return "";
+			builder.append("Error");
+			builder.append("</body>");
+			return builder.toString();
 		}
-		response.append("Campos declarados");
+		builder.append("<h4>Campos declarados</h4>");
 		for (Field field : targetClass.getDeclaredFields()) {
-			response.append("\n\t" + field);
+			builder.append(field + "<br/>");
 		}
-		response.append("Métodos declarados");
+		builder.append("<h4>Metodos declarados</h4>");
 		for (Method method : targetClass.getDeclaredMethods()) {
-			response.append("\n\t" + method);
+			builder.append(method + "<br/>");
 		}
-		return response.toString();
+		builder.append("</body>");
+
+		return builder.toString();
+	}
+
+	private static String invokeCommand(String className, String methodName) {
+		StringBuilder builder = new StringBuilder();
+		builder.append("HTTP/1.1 200 OK\r\n");
+		builder.append("Content-Type: text/html\r\n\r\n");
+		builder.append("<!DOCTYPE html>");
+		builder.append("<html>");
+		builder.append("<head>");
+		builder.append("<meta charset='UTF-8'>");
+		builder.append("<title>AREM</title>\n");
+		builder.append("</head>");
+		builder.append("<body>");
+		Class<?> targetClass;
+		try {
+			targetClass = Class.forName(className);
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+			builder.append("Error");
+			builder.append("</body>");
+			return builder.toString();
+		}
+		for (Method method : targetClass.getDeclaredMethods()) {
+			if (method.getName() == methodName) {
+				try {
+					builder.append(method.invoke(targetClass));
+				} catch (IllegalAccessException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IllegalArgumentException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (InvocationTargetException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
+		builder.append("</body>");
+
+		return builder.toString();
 	}
 }
